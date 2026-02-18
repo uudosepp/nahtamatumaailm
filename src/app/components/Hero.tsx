@@ -17,7 +17,7 @@ export function Hero() {
           {/* Title */}
           <h1 className="text-3xl md:text-6xl lg:text-7xl font-bold uppercase leading-tight text-white flex flex-col items-center text-center animate-[fadeInUp_1s_ease-out_0.2s_both]">
             <span className="tracking-[0.15em] md:whitespace-nowrap">Nähtamatu<br className="md:hidden" /> maailm</span>
-            <span className="tracking-[0.35em] md:whitespace-nowrap border-b-2 border-white pb-4">Ei ole <br className="md:hidden" /> kaugel</span>
+            <span className="tracking-[0.35em] md:whitespace-nowrap border-b-2 border-white pb-4">Ei ole<br className="md:hidden" /> kaugel</span>
           </h1>
           
           {/* Subtitle */}
