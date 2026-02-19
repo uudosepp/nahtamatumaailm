@@ -2,7 +2,7 @@ import logo from "figma:asset/716230bab09e57bc5129eb25325ef3976a01b50b.png";
 
 export function Hero() {
   return (
-    <section className="relative h-[600px] md:min-h-screen flex items-center justify-center overflow-hidden bg-[#7b553d]">
+    <section className="relative h-[700px] md:min-h-screen flex items-center justify-center overflow-hidden bg-[#7b553d]">
       <div className="container mx-auto px-6 relative z-20">
         <div className="max-w-3xl mx-auto text-center space-y-12">
           {/* Logo */}
