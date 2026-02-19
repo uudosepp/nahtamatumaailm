@@ -2,8 +2,8 @@ import logo from "figma:asset/716230bab09e57bc5129eb25325ef3976a01b50b.png";
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-[#7b553d] pt-20">
-      <div className="container mx-auto px-6 py-32 relative z-20">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#7b553d]">
+      <div className="container mx-auto px-6 relative z-20">
         <div className="max-w-3xl mx-auto text-center space-y-12">
           {/* Logo */}
           <div className="flex justify-center animate-[fadeInUp_1s_ease-out]">

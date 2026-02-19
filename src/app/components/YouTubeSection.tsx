@@ -1,5 +1,6 @@
-import { ExternalLink, PlayCircle, Loader2 } from "lucide-react";
+import { ExternalLink, PlayCircle, Loader2, Youtube } from "lucide-react";
 import { useState, useEffect } from "react";
+import profileImg from "../../assets/channels4_profile.jpg";
 
 interface YouTubeVideo {
   id: string;
@@ -28,7 +29,7 @@ export function YouTubeSection() {
         
         const data = await response.json();
         
-        if (data.status === "ok") {
+        if (data.status === "ok" && data.items && data.items.length > 0) {
           const formattedVideos = data.items.slice(0, 7).map((item: any) => ({
             id: item.guid.split(":")[2] || item.link.split("v=")[1],
             title: item.title,
@@ -36,6 +37,9 @@ export function YouTubeSection() {
             url: item.link
           }));
           setVideos(formattedVideos);
+        } else if (data.status === "ok" && (!data.items || data.items.length === 0)) {
+           // No videos found, but not strictly an error
+           setVideos([]);
         } else {
           throw new Error("Andmete töötlemine ebaõnnestus");
         }
@@ -69,18 +73,35 @@ export function YouTubeSection() {
             <div className="flex justify-center items-center py-20">
               <Loader2 className="w-10 h-10 animate-spin text-[#7b553d]" />
             </div>
-          ) : error ? (
-            <div className="text-center py-10 text-red-500">
-              {error}
-              <div className="mt-4">
-                <a 
-                  href={`https://www.youtube.com/channel/${CHANNEL_ID}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#7b553d] underline"
-                >
-                  Külasta kanalit otse
-                </a>
+          ) : error || (videos.length === 0 && !isLoading) ? (
+            <div className="max-w-4xl mx-auto py-10">
+              <div className="bg-[#f8f9fa] border border-gray-100 rounded-3xl p-8 md:p-12 shadow-sm flex flex-col md:flex-row items-center gap-10">
+                <div className="relative group shrink-0">
+                   <div className="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white shadow-xl transform transition-transform group-hover:scale-105">
+                     <img 
+                       src={profileImg} 
+                       alt="Nähtamatu Maailm" 
+                       className="w-full h-full object-cover"
+                     />
+                   </div>
+                </div>
+                
+                <div className="flex-1 text-center md:text-left">
+                  <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Nähtamatu maailm / Invisible world</h3>
+                  <p className="text-gray-500 font-medium mb-4">@Nahtamatu_maailm</p>
+                  <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+                    Kõik meie jutlused, mõtisklused ja õpetused on mugavalt leitavad meie YouTube'i kanalilt.
+                  </p>
+                  <a 
+                    href={`https://www.youtube.com/channel/${CHANNEL_ID}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-3 bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-10 rounded-full transition-all hover:shadow-lg active:scale-95 group"
+                  >
+                    <Youtube className="w-6 h-6" />
+                    Mine kanalile
+                  </a>
+                </div>
               </div>
             </div>
           ) : (
