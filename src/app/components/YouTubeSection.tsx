@@ -20,57 +20,77 @@ export function YouTubeSection() {
     async function fetchVideos() {
       try {
         setIsLoading(true);
-        const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID.trim()}`;
+        setError(null);
         
-        // Kasutame AllOrigins JSON-põhist päringut, mis on live'is stabiilsem
-        // Lisame ka timestampi, et vältida puhvrit (cache)
-        const response = await fetch(
-          `https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}&_=${Date.now()}`
-        );
+        const channelId = "UCDPzs8dW216jEMvuoQsVV3w";
+        const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+        const isDev = import.meta.env.DEV;
         
-        if (!response.ok) throw new Error("Viga videote laadimisel");
-        
-        const data = await response.json();
-        const xmlText = data.contents;
-        
-        if (!xmlText) throw new Error("Andmed puuduvad");
-        
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-        const entries = Array.from(xmlDoc.getElementsByTagName("entry"));
-        
-        if (entries.length > 0) {
-          const formattedVideos = entries.slice(0, 7).map((entry) => {
-            // Helper to get element text regardless of namespace
-            const getTagText = (tagName: string) => {
-              const el = entry.getElementsByTagName(tagName)[0];
-              return el ? el.textContent : "";
-            };
+        let formattedVideos: YouTubeVideo[] = [];
 
-            // Video ID can be in yt:videoId or videoId
-            const videoId = getTagText("yt:videoId") || getTagText("videoId") || "";
-            const title = getTagText("title") || "";
+        if (isDev) {
+          // 1. LOKAALSELT (DEV): Kasutame rss2json-i, see on kiirem ja stabiilsem.
+          try {
+            const r2jRes = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`);
+            if (r2jRes.ok) {
+              const data = await r2jRes.json();
+              if (data.status === "ok" && data.items && data.items.length > 0) {
+                formattedVideos = data.items.slice(0, 7).map((item: any) => {
+                  const guidParts = item.guid ? item.guid.split(":") : [];
+                  const videoId = guidParts.length > 2 ? guidParts[2] : (item.link ? item.link.split("v=")[1] : "");
+                  return {
+                    id: videoId,
+                    title: item.title,
+                    url: item.link,
+                    thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+                  };
+                });
+              }
+            }
+          } catch (e) {
+            console.warn("rss2json failed, trying AllOrigins...");
+          }
+
+          // 2. FALLBACK (DEV): Kui rss2json ebaõnnestub, proovime AllOrigins-it ja XML-i parsimist.
+          if (formattedVideos.length === 0) {
+            const aoRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}&_=${Date.now()}`);
+            if (aoRes.ok) {
+              const aoData = await aoRes.json();
+              const xmlDoc = new DOMParser().parseFromString(aoData.contents, "text/xml");
+              const entries = Array.from(xmlDoc.getElementsByTagName("entry")).slice(0, 7);
+              
+              formattedVideos = entries.map((entry) => {
+                const videoId = entry.getElementsByTagName("yt:videoId")[0]?.textContent || "";
+                const title = entry.getElementsByTagName("title")[0]?.textContent || "";
+                const link = entry.getElementsByTagName("link")[0]?.getAttribute("href") || "";
+                return { id: videoId, title, url: link, thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` };
+              });
+            }
+          }
+        } else {
+          // 3. PRODUCTION (VERCEL): Kasutame sinu puhast serverless functioni.
+          const response = await fetch("/api/youtube");
+          if (!response.ok) throw new Error("API viga");
+          const xmlText = await response.text();
+          const xmlDoc = new DOMParser().parseFromString(xmlText, "text/xml");
+          const entries = Array.from(xmlDoc.getElementsByTagName("entry")).slice(0, 7);
+          
+          formattedVideos = entries.map((entry) => {
+            const videoId = entry.getElementsByTagName("yt:videoId")[0]?.textContent || "";
+            const title = entry.getElementsByTagName("title")[0]?.textContent || "";
             const link = entry.getElementsByTagName("link")[0]?.getAttribute("href") || "";
-            
-            // Try to get thumbnail from media:thumbnail
-            const mediaThumbnail = entry.getElementsByTagName("media:thumbnail")[0] || 
-                                 entry.getElementsByTagName("thumbnail")[0];
-            const thumbnail = mediaThumbnail?.getAttribute("url") || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
-
-            return {
-              id: videoId,
-              title: title,
-              thumbnail: thumbnail,
-              url: link
-            };
+            return { id: videoId, title, url: link, thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` };
           });
+        }
+
+        if (formattedVideos.length > 0) {
           setVideos(formattedVideos);
         } else {
-          setVideos([]);
+          setError("Videoid ei leitud.");
         }
       } catch (err) {
         console.error("YouTube fetch error:", err);
-        setError("Ei õnnestunud laadida viimaseid videoid.");
+        setError("Ei õnnestunud laadida videoid.");
       } finally {
         setIsLoading(false);
       }
