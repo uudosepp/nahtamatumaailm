@@ -20,28 +20,49 @@ export function YouTubeSection() {
     async function fetchVideos() {
       try {
         setIsLoading(true);
-        // Using rss2json as a free proxy to get YouTube RSS feed without API key
+        const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID.trim()}`;
+        
+        // Kasutame corsproxy.io-d, mis on hetkel töökindlam
         const response = await fetch(
-          `https://api.rss2json.com/v1/api.json?rss_url=https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID}`
+          `https://corsproxy.io/?${encodeURIComponent(feedUrl)}`
         );
         
         if (!response.ok) throw new Error("Viga videote laadimisel");
         
-        const data = await response.json();
+        const xmlText = await response.text();
         
-        if (data.status === "ok" && data.items && data.items.length > 0) {
-          const formattedVideos = data.items.slice(0, 7).map((item: any) => ({
-            id: item.guid.split(":")[2] || item.link.split("v=")[1],
-            title: item.title,
-            thumbnail: `https://i.ytimg.com/vi/${item.guid.split(":")[2] || item.link.split("v=")[1]}/maxresdefault.jpg`,
-            url: item.link
-          }));
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+        const entries = Array.from(xmlDoc.getElementsByTagName("entry"));
+        
+        if (entries.length > 0) {
+          const formattedVideos = entries.slice(0, 7).map((entry) => {
+            // Helper to get element text regardless of namespace
+            const getTagText = (tagName: string) => {
+              const el = entry.getElementsByTagName(tagName)[0];
+              return el ? el.textContent : "";
+            };
+
+            // Video ID can be in yt:videoId or videoId
+            const videoId = getTagText("yt:videoId") || getTagText("videoId") || "";
+            const title = getTagText("title") || "";
+            const link = entry.getElementsByTagName("link")[0]?.getAttribute("href") || "";
+            
+            // Try to get thumbnail from media:thumbnail
+            const mediaThumbnail = entry.getElementsByTagName("media:thumbnail")[0] || 
+                                 entry.getElementsByTagName("thumbnail")[0];
+            const thumbnail = mediaThumbnail?.getAttribute("url") || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+            return {
+              id: videoId,
+              title: title,
+              thumbnail: thumbnail,
+              url: link
+            };
+          });
           setVideos(formattedVideos);
-        } else if (data.status === "ok" && (!data.items || data.items.length === 0)) {
-           // No videos found, but not strictly an error
-           setVideos([]);
         } else {
-          throw new Error("Andmete töötlemine ebaõnnestus");
+          setVideos([]);
         }
       } catch (err) {
         console.error("YouTube fetch error:", err);
