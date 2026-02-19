@@ -22,14 +22,18 @@ export function YouTubeSection() {
         setIsLoading(true);
         const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID.trim()}`;
         
-        // Kasutame corsproxy.io-d, mis on hetkel töökindlam
+        // Kasutame AllOrigins JSON-põhist päringut, mis on live'is stabiilsem
+        // Lisame ka timestampi, et vältida puhvrit (cache)
         const response = await fetch(
-          `https://corsproxy.io/?${encodeURIComponent(feedUrl)}`
+          `https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}&_=${Date.now()}`
         );
         
         if (!response.ok) throw new Error("Viga videote laadimisel");
         
-        const xmlText = await response.text();
+        const data = await response.json();
+        const xmlText = data.contents;
+        
+        if (!xmlText) throw new Error("Andmed puuduvad");
         
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, "text/xml");
